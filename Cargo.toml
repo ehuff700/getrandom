@@ -19,13 +19,13 @@ compiler_builtins = { version = "0.1", optional = true }
 core = { version = "1.0", optional = true, package = "rustc-std-workspace-core" }
 
 [target.'cfg(unix)'.dependencies]
-libc = { version = "0.2.154", default-features = false }
+libc = { version = "0.2.154", default-features = false, optional = true }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
-wasi = { version = "0.11", default-features = false }
+wasi = { version = "0.11", default-features = false, optional = true }
 
 [target.'cfg(all(windows, not(target_vendor = "win7")))'.dependencies]
-windows-targets = "0.52"
+windows-targets = { version = "0.52", optional = true }
 
 [target.'cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))'.dependencies]
 wasm-bindgen = { version = "0.2.89", default-features = false, optional = true }
@@ -34,6 +34,9 @@ js-sys = { version = "0.3", optional = true }
 wasm-bindgen-test = "0.3.39"
 
 [features]
+default = ["os"]
+os = ["dep:windows-targets", "dep:wasi", "dep:libc"]
+
 # Implement std-only traits for getrandom::Error
 std = []
 # Disable `/dev/urandom` fallback for Linux and Android targets.

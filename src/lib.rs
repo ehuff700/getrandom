@@ -234,121 +234,121 @@ pub use crate::error::Error;
 // The function MUST fully initialize `dest` when `Ok(())` is returned.
 // The function MUST NOT ever write uninitialized bytes into `dest`,
 // regardless of what value it returns.
+#[cfg(feature = "os")]
 cfg_if! {
-    if #[cfg(feature = "custom")] {
-        use custom as imp;
-    }
-    else if #[cfg(all(target_arch = "x86_64", target_env = "sgx"))] {
-        #[path = "rdrand.rs"] mod imp;
-    } else if #[cfg(all(feature = "rdrand",
-                        any(target_arch = "x86_64", target_arch = "x86")))] {
-        #[path = "rdrand.rs"] mod imp;
-    }
-    else if #[cfg(any(target_os = "haiku", target_os = "redox", target_os = "nto", target_os = "aix"))] {
-        mod util_libc;
-        #[path = "use_file.rs"] mod imp;
-    } else if #[cfg(any(
-        target_os = "macos",
-        target_os = "openbsd",
-        target_os = "vita",
-        target_os = "emscripten",
-    ))] {
-        mod util_libc;
-        #[path = "getentropy.rs"] mod imp;
-    } else if #[cfg(any(
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "hurd",
-        target_os = "illumos",
-        // Check for target_arch = "arm" to only include the 3DS. Does not
-        // include the Nintendo Switch (which is target_arch = "aarch64").
-        all(target_os = "horizon", target_arch = "arm"),
-    ))] {
-        mod util_libc;
-        #[path = "getrandom.rs"] mod imp;
-    } else if #[cfg(all(
-        not(feature = "linux_disable_fallback"),
-        any(
-            // Rust supports Android API level 19 (KitKat) [0] and the next upgrade targets
-            // level 21 (Lollipop) [1], while `getrandom(2)` was added only in
-            // level 23 (Marshmallow). Note that it applies only to the "old" `target_arch`es,
-            // RISC-V Android targets sufficiently new API level, same will apply for potential
-            // new Android `target_arch`es.
-            // [0]: https://blog.rust-lang.org/2023/01/09/android-ndk-update-r25.html
-            // [1]: https://github.com/rust-lang/rust/pull/120593
-            all(
-                target_os = "android",
-                any(
-                    target_arch = "aarch64",
-                    target_arch = "arm",
-                    target_arch = "x86",
-                    target_arch = "x86_64",
+        // OS-specific checks if the `os` feature is enabled
+        if #[cfg(any(target_os = "haiku", target_os = "redox", target_os = "nto", target_os = "aix"))] {
+            mod util_libc;
+            #[path = "use_file.rs"] mod imp;
+        } else if #[cfg(any(
+            target_os = "macos",
+            target_os = "openbsd",
+            target_os = "vita",
+            target_os = "emscripten",
+        ))] {
+            mod util_libc;
+            #[path = "getentropy.rs"] mod imp;
+        } else if #[cfg(any(
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "hurd",
+            target_os = "illumos",
+            all(target_os = "horizon", target_arch = "arm"),
+        ))] {
+            mod util_libc;
+            #[path = "getrandom.rs"] mod imp;
+        } else if #[cfg(all(
+            not(feature = "linux_disable_fallback"),
+            any(
+                all(
+                    target_os = "android",
+                    any(
+                        target_arch = "aarch64",
+                        target_arch = "arm",
+                        target_arch = "x86",
+                        target_arch = "x86_64",
+                    ),
                 ),
+                all(
+                    target_os = "linux",
+                    any(
+                        target_arch = "aarch64",
+                        target_arch = "arm",
+                        target_arch = "powerpc",
+                        target_arch = "powerpc64",
+                        target_arch = "s390x",
+                        target_arch = "x86",
+                        target_arch = "x86_64",
+                        target_env = "musl",
+                    ),
+                )
             ),
-            // Only on these `target_arch`es Rust supports Linux kernel versions (3.2+)
-            // that precede the version (3.17) in which `getrandom(2)` was added:
-            // https://doc.rust-lang.org/stable/rustc/platform-support.html
-            all(
-                target_os = "linux",
-                any(
-                    target_arch = "aarch64",
-                    target_arch = "arm",
-                    target_arch = "powerpc",
-                    target_arch = "powerpc64",
-                    target_arch = "s390x",
-                    target_arch = "x86",
-                    target_arch = "x86_64",
-                    // Minimum supported Linux kernel version for MUSL targets
-                    // is not specified explicitly (as of Rust 1.77) and they
-                    // are used in practice to target pre-3.17 kernels.
-                    target_env = "musl",
-                ),
-            )
-        ),
-    ))] {
-        mod util_libc;
-        mod use_file;
-        mod linux_android;
-        #[path = "linux_android_with_fallback.rs"] mod imp;
-    } else if #[cfg(any(target_os = "android", target_os = "linux"))] {
-        mod util_libc;
-        #[path = "linux_android.rs"] mod imp;
-    } else if #[cfg(target_os = "solaris")] {
-        mod util_libc;
-        #[path = "solaris.rs"] mod imp;
-    } else if #[cfg(target_os = "netbsd")] {
-        mod util_libc;
-        #[path = "netbsd.rs"] mod imp;
-    } else if #[cfg(target_os = "fuchsia")] {
-        #[path = "fuchsia.rs"] mod imp;
-    } else if #[cfg(any(target_os = "ios", target_os = "visionos", target_os = "watchos", target_os = "tvos"))] {
-        #[path = "apple-other.rs"] mod imp;
-    } else if #[cfg(all(target_arch = "wasm32", target_os = "wasi"))] {
-        #[path = "wasi.rs"] mod imp;
-    } else if #[cfg(target_os = "hermit")] {
-        #[path = "hermit.rs"] mod imp;
-    } else if #[cfg(target_os = "vxworks")] {
-        mod util_libc;
-        #[path = "vxworks.rs"] mod imp;
-    } else if #[cfg(target_os = "solid_asp3")] {
-        #[path = "solid.rs"] mod imp;
-    } else if #[cfg(target_os = "espidf")] {
-        #[path = "espidf.rs"] mod imp;
-    } else if #[cfg(all(windows, target_vendor = "win7"))] {
-        #[path = "windows7.rs"] mod imp;
-    } else if #[cfg(windows)] {
-        #[path = "windows.rs"] mod imp;
-    } else if #[cfg(all(feature = "js",
-                        any(target_arch = "wasm32", target_arch = "wasm64"),
-                        target_os = "unknown"))] {
-        #[path = "js.rs"] mod imp;
-    } else if #[cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"),
-                        target_os = "unknown"))] {
-        compile_error!("the wasm*-unknown-unknown targets are not supported by \
-                        default, you may need to enable the \"js\" feature. \
-                        For more information see: \
-                        https://docs.rs/getrandom/#webassembly-support");
+        ))] {
+            mod util_libc;
+            mod use_file;
+            mod linux_android;
+            #[path = "linux_android_with_fallback.rs"] mod imp;
+        } else if #[cfg(any(target_os = "android", target_os = "linux"))] {
+            mod util_libc;
+            #[path = "linux_android.rs"] mod imp;
+        } else if #[cfg(target_os = "solaris")] {
+            mod util_libc;
+            #[path = "solaris.rs"] mod imp;
+        } else if #[cfg(target_os = "netbsd")] {
+            mod util_libc;
+            #[path = "netbsd.rs"] mod imp;
+        } else if #[cfg(target_os = "fuchsia")] {
+            #[path = "fuchsia.rs"] mod imp;
+        } else if #[cfg(any(target_os = "ios", target_os = "visionos", target_os = "watchos", target_os = "tvos"))] {
+            #[path = "apple-other.rs"] mod imp;
+        } else if #[cfg(all(target_arch = "wasm32", target_os = "wasi"))] {
+            #[path = "wasi.rs"] mod imp;
+        } else if #[cfg(target_os = "hermit")] {
+            #[path = "hermit.rs"] mod imp;
+        } else if #[cfg(target_os = "vxworks")] {
+            mod util_libc;
+            #[path = "vxworks.rs"] mod imp;
+        } else if #[cfg(target_os = "solid_asp3")] {
+            #[path = "solid.rs"] mod imp;
+        } else if #[cfg(target_os = "espidf")] {
+            #[path = "espidf.rs"] mod imp;
+        } else if #[cfg(all(windows, target_vendor = "win7"))] {
+            #[path = "windows7.rs"] mod imp;
+        } else if #[cfg(windows)] {
+            #[path = "windows.rs"] mod imp;
+        } else if #[cfg(all(feature = "js",
+                            any(target_arch = "wasm32", target_arch = "wasm64"),
+                            target_os = "unknown"))] {
+            #[path = "js.rs"] mod imp;
+        } else if #[cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"),
+                            target_os = "unknown"))] {
+            compile_error!("the wasm*-unknown-unknown targets are not supported by \
+                            default, you may need to enable the \"js\" feature. \
+                            For more information see: \
+                            https://docs.rs/getrandom/#webassembly-support");
+        } else {
+        // Neither `os`, `custom`, nor `rdrand` is enabled
+        compile_error!("target is not supported, for more information see: \
+                        https://docs.rs/getrandom/#unsupported-targets");
+    }
+}
+
+#[cfg(all(not(feature = "os"), any(feature = "custom", feature = "rdrand")))]
+cfg_if! {
+    if #[cfg(all(feature = "custom", feature = "rdrand"))] {
+        compile_error!("`custom` and `rdrand` features cannot be enabled at the same time.");
+    } else if #[cfg(all(feature = "custom", feature = "os"))] {
+        compile_error!("`custom` and `os` features cannot be enabled at the same time.");
+    } else if #[cfg(all(feature = "rdrand", feature = "os"))] {
+        compile_error!("`rdrand` and `os` features cannot be enabled at the same time.");
+    } else if #[cfg(feature = "custom")] {
+        // Custom feature selected
+        use custom as imp;
+    } else if #[cfg(all(feature = "rdrand", any(target_arch = "x86_64", target_arch = "x86")))] {
+        // RDRAND feature selected for specific architectures
+        #[path = "rdrand.rs"] mod imp;
     } else {
+        // Neither `custom` nor `rdrand` is enabled
         compile_error!("target is not supported, for more information see: \
                         https://docs.rs/getrandom/#unsupported-targets");
     }
