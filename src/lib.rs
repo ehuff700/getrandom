@@ -235,7 +235,16 @@ pub use crate::error::Error;
 // The function MUST NOT ever write uninitialized bytes into `dest`,
 // regardless of what value it returns.
 cfg_if! {
-    if #[cfg(any(target_os = "haiku", target_os = "redox", target_os = "nto", target_os = "aix"))] {
+    if #[cfg(feature = "custom")] {
+        use custom as imp;
+    }
+    else if #[cfg(all(target_arch = "x86_64", target_env = "sgx"))] {
+        #[path = "rdrand.rs"] mod imp;
+    } else if #[cfg(all(feature = "rdrand",
+                        any(target_arch = "x86_64", target_arch = "x86")))] {
+        #[path = "rdrand.rs"] mod imp;
+    }
+    else if #[cfg(any(target_os = "haiku", target_os = "redox", target_os = "nto", target_os = "aix"))] {
         mod util_libc;
         #[path = "use_file.rs"] mod imp;
     } else if #[cfg(any(
@@ -329,17 +338,10 @@ cfg_if! {
         #[path = "windows7.rs"] mod imp;
     } else if #[cfg(windows)] {
         #[path = "windows.rs"] mod imp;
-    } else if #[cfg(all(target_arch = "x86_64", target_env = "sgx"))] {
-        #[path = "rdrand.rs"] mod imp;
-    } else if #[cfg(all(feature = "rdrand",
-                        any(target_arch = "x86_64", target_arch = "x86")))] {
-        #[path = "rdrand.rs"] mod imp;
     } else if #[cfg(all(feature = "js",
                         any(target_arch = "wasm32", target_arch = "wasm64"),
                         target_os = "unknown"))] {
         #[path = "js.rs"] mod imp;
-    } else if #[cfg(feature = "custom")] {
-        use custom as imp;
     } else if #[cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"),
                         target_os = "unknown"))] {
         compile_error!("the wasm*-unknown-unknown targets are not supported by \
